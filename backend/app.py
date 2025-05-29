@@ -14,13 +14,19 @@ Backend_URL = os.getenv("Backend_URL")
 client = AsyncIOMotorClient(Backend_URL)
 db = client.get_database("URL-shortener")
 shortLinksDB = db["shortLinks"]
+counterDB = db["counter"]
 
-def generateID():
-    i=0
-    while True:
-        yield i
-        i+=1
-gen = generateID()
+async def generateID():
+    try:
+        count = await counterDB.find_one_and_update(
+            {"use":"counter"},{"$inc":{"count":1}},
+            return_document=True,
+            upsert=True
+        )
+    except PyMongoError as e:
+        raise HTTPException(status_code=500,detail="erroring generating random slug, Try again!")
+    
+    return count["count"]
 
 def base62Converter(slug):
     base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -37,7 +43,7 @@ def base62Converter(slug):
 
 async def generateSlug(linkData,customInput):
     if customInput==None:
-        slug = next(gen)
+        slug = await generateID()
         genSlug=base62Converter(slug)
         # print(genSlug)
         try:
@@ -63,6 +69,8 @@ async def creatingShortLink(link:str,customInput:Optional[str]=None ):
     
     if customInput and not re.match(r'^[A-Za-z0-9]{1,30}$',customInput):
         raise HTTPException(status_code=400,detail="Use valid symbols for custom link with length ranging from 1 to 30 characters")
+    link = link.rstrip("/")
+    # print(link)
     flag=link.find("https://")
     if flag==-1:
         link = "https://"+link
