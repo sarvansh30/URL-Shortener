@@ -81,11 +81,11 @@ async def creatingShortLink(link:str,customInput:Optional[str]=None ):
         raise HTTPException(status_code=409,detail="Server Error occurred trying to create short-link")
     if resp:
         return {"msg":"Shortlink already exists",
-                "stLink":f"smol/r/{resp["slug"]}"}
+                "stLink":f"/r/{resp["slug"]}"}
     result = await generateSlug(link,customInput)
     if result == -1:
         raise HTTPException(status_code=400,detail="This link already in use try another custom link")
-    return {"stLink":f"smol/r/{result}"}
+    return {"stLink":f"/r/{result}"}
 
 
 
